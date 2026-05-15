@@ -1,12 +1,31 @@
 import 'package:flutter/material.dart';
+import 'main.dart'; // MuzeApp.of(context) kullanabilmek için main.dart'ı import et
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
   @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  @override
   Widget build(BuildContext context) {
+    // Mevcut temanın karanlık olup olmadığını kontrol ediyoruz
+    final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    // Renkleri temaya göre dinamik seçiyoruz
+    final Color textColor = isDarkMode ? Colors.white : const Color(0xFF1E293B);
+    final Color subTextColor = isDarkMode
+        ? Colors.white70
+        : const Color(0xFF64748B);
+    final Color cardColor = isDarkMode ? const Color(0xFF1E293B) : Colors.white;
+    final Color borderColor = isDarkMode
+        ? const Color(0xFF334155)
+        : const Color(0xFFF1F5F9);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC), // slate-50
+      // Arka plan rengi main.dart içindeki temadan otomatik gelir
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -23,12 +42,9 @@ class ProfileScreen extends StatelessWidget {
                           width: 100,
                           height: 100,
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: cardColor,
                             shape: BoxShape.circle,
-                            border: Border.all(
-                              color: const Color(0xFFE2E8F0),
-                              width: 2,
-                            ),
+                            border: Border.all(color: borderColor, width: 2),
                             boxShadow: [
                               BoxShadow(
                                 color: Colors.black.withOpacity(0.05),
@@ -38,10 +54,7 @@ class ProfileScreen extends StatelessWidget {
                             ],
                           ),
                           child: const Center(
-                            child: Text(
-                              "👤", // Buraya kullanıcı resmi gelebilir
-                              style: TextStyle(fontSize: 50),
-                            ),
+                            child: Text("👤", style: TextStyle(fontSize: 50)),
                           ),
                         ),
                         Container(
@@ -59,19 +72,19 @@ class ProfileScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    const Text(
+                    Text(
                       "Berat Emekli",
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF1E293B),
+                        color: textColor,
                       ),
                     ),
-                    const Text(
+                    Text(
                       "Kültür Kaşifi",
                       style: TextStyle(
                         fontSize: 14,
-                        color: Color(0xFF64748B),
+                        color: subTextColor,
                         fontStyle: FontStyle.italic,
                       ),
                     ),
@@ -83,40 +96,46 @@ class ProfileScreen extends StatelessWidget {
               // İstatistik Kartları
               Row(
                 children: [
-                  _buildStatCard("Gezilen", "12", "🏛️"),
+                  _buildStatCard("Gezilen", "12", "🏛️", cardColor, textColor),
                   const SizedBox(width: 16),
-                  _buildStatCard("Biletlerim", "3", "🎫"),
+                  _buildStatCard("Biletlerim", "3", "🎫", cardColor, textColor),
                   const SizedBox(width: 16),
-                  _buildStatCard("Puan", "450", "⭐"),
+                  _buildStatCard("Puan", "450", "⭐", cardColor, textColor),
                 ],
               ),
               const SizedBox(height: 32),
 
-              // Ayarlar Menüsü
-              _buildSectionTitle("Hesap Ayarları"),
+              _buildSectionTitle("Uygulama Ayarları"),
               const SizedBox(height: 12),
-              _buildMenuItem(Icons.person_outline, "Kişisel Bilgiler"),
-              _buildMenuItem(Icons.notifications_none_outlined, "Bildirimler"),
-              _buildMenuItem(Icons.security_outlined, "Güvenlik"),
 
-              const SizedBox(height: 24),
-              _buildSectionTitle("Uygulama"),
-              const SizedBox(height: 12),
+              // Dil Seçeneği
               _buildMenuItem(
                 Icons.language_outlined,
                 "Dil Seçeneği",
+                cardColor,
+                textColor,
                 trailing: "Türkçe",
               ),
+
+              // KARANLIK MOD SWITCH (Tıklanabilir Yer Burası)
               _buildMenuItem(
                 Icons.dark_mode_outlined,
                 "Karanlık Mod",
+                cardColor,
+                textColor,
                 isSwitch: true,
+                switchValue: isDarkMode,
+                onSwitchChanged: (value) {
+                  // main.dart'taki changeTheme metodunu tetikler
+                  MuzeApp.of(
+                    context,
+                  )?.changeTheme(value ? ThemeMode.dark : ThemeMode.light);
+                },
               ),
-              _buildMenuItem(Icons.help_outline, "Yardım & Destek"),
 
               const SizedBox(height: 32),
 
-              // Çıkış Yap Butonu
+              // Çıkış Butonu
               SizedBox(
                 width: double.infinity,
                 child: TextButton(
@@ -125,9 +144,9 @@ class ProfileScreen extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
-                      side: const BorderSide(color: Color(0xFFF1F5F9)),
+                      side: BorderSide(color: borderColor),
                     ),
-                    backgroundColor: Colors.white,
+                    backgroundColor: cardColor,
                   ),
                   child: const Text(
                     "Çıkış Yap",
@@ -146,14 +165,24 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatCard(String label, String value, String emoji) {
+  Widget _buildStatCard(
+    String label,
+    String value,
+    String emoji,
+    Color bg,
+    Color text,
+  ) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: bg,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
+          border: Border.all(
+            color: bg == Colors.white
+                ? const Color(0xFFE2E8F0)
+                : Colors.transparent,
+          ),
         ),
         child: Column(
           children: [
@@ -161,10 +190,10 @@ class ProfileScreen extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
-                color: Color(0xFF1E293B),
+                color: text,
               ),
             ),
             Text(
@@ -194,24 +223,34 @@ class ProfileScreen extends StatelessWidget {
 
   Widget _buildMenuItem(
     IconData icon,
-    String title, {
+    String title,
+    Color bg,
+    Color text, {
     String? trailing,
     bool isSwitch = false,
+    bool switchValue = false,
+    Function(bool)? onSwitchChanged,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: bg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(
+          color: bg == Colors.white
+              ? const Color(0xFFF1F5F9)
+              : Colors.transparent,
+        ),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
+              color: bg == Colors.white
+                  ? const Color(0xFFF8FAFC)
+                  : Colors.black26,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, size: 20, color: const Color(0xFF64748B)),
@@ -220,17 +259,17 @@ class ProfileScreen extends StatelessWidget {
           Expanded(
             child: Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w600,
                 fontSize: 14,
-                color: Color(0xFF1E293B),
+                color: text,
               ),
             ),
           ),
           if (isSwitch)
             Switch(
-              value: false,
-              onChanged: (v) {},
+              value: switchValue,
+              onChanged: onSwitchChanged,
               activeColor: const Color(0xFF2563EB),
             )
           else if (trailing != null)

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:muze_takip_uygulamasi/biletler.dart';
 import 'muzeler.dart';
 import 'profil.dart';
 import 'biletler.dart';
@@ -14,98 +13,138 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  User? user;
   int _selectedIndex = 0;
 
   @override
-  void initState() {
-    super.initState();
-    _checkAuth();
-  }
-
-  // Firebase Auth kontrolü (Sayfa ilk açıldığında bağlantı hatası almamak için)
-  Future<void> _checkAuth() async {
-    user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      try {
-        await FirebaseAuth.instance.signInAnonymously();
-        if (mounted) {
-          setState(() {
-            user = FirebaseAuth.instance.currentUser;
-          });
-        }
-      } catch (e) {
-        debugPrint("Auth hatası: $e");
-      }
-    }
-  }
-
-  // Navigasyon için Sayfa Listesi
-  List<Widget> get _pages => [
-    _buildHomeContent(),
-    const MuseumsScreen(),
-    const TicketsScreen(),
-    const ProfileScreen(),
-  ];
-
-  @override
   Widget build(BuildContext context) {
+    final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final Color textColor = isDarkMode ? Colors.white : const Color(0xFF1E293B);
+    final Color subTextColor = isDarkMode
+        ? Colors.white70
+        : const Color(0xFF64748B);
+    final Color cardColor = isDarkMode ? const Color(0xFF1E293B) : Colors.white;
+    final Color borderColor = isDarkMode
+        ? const Color(0xFF334155)
+        : const Color(0xFFE2E8F0);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      bottomNavigationBar: _buildBottomNav(),
-      body: SafeArea(
-        child: IndexedStack(index: _selectedIndex, children: _pages),
-      ),
+      body: _selectedIndex == 0
+          ? _buildHomeContent(
+              isDarkMode,
+              textColor,
+              subTextColor,
+              cardColor,
+              borderColor,
+            )
+          : _selectedIndex == 1
+          ? const MuseumsScreen()
+          : _selectedIndex == 2
+          ? const TicketsScreen()
+          : const ProfileScreen(),
+      bottomNavigationBar: _buildBottomNav(isDarkMode),
     );
   }
 
-  //anasayfa
-  Widget _buildHomeContent() {
+  Widget _buildHomeContent(
+    bool isDarkMode,
+    Color textColor,
+    Color subTextColor,
+    Color cardColor,
+    Color borderColor,
+  ) {
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHeader(),
-          _buildExplorePrompt(),
-          _buildSectionTitle("Geçmiş Ziyaretlerin"),
-          _buildVisitedPlacesList(),
+          _buildHeader(textColor, subTextColor, cardColor, borderColor),
+          _buildExplorePrompt(
+            isDarkMode,
+            textColor,
+            subTextColor,
+            cardColor,
+            borderColor,
+          ),
+          _buildSectionTitle("Geçmiş Ziyaretlerin", textColor),
+          _buildVisitedPlacesList(cardColor, textColor, borderColor),
           const SizedBox(height: 30),
         ],
       ),
     );
   }
 
-  // müzeleri keşfet yeri
-  Widget _buildExplorePrompt() {
+  Widget _buildHeader(
+    Color textColor,
+    Color subTextColor,
+    Color cardColor,
+    Color borderColor,
+  ) {
+    final user = FirebaseAuth.instance.currentUser;
+    return Padding(
+      padding: const EdgeInsets.only(top: 60, left: 24, right: 24, bottom: 20),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Hoş Geldin 👋",
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
+              ),
+              Text(
+                user?.phoneNumber?.split('@')[0] ?? "Gezgin",
+                style: TextStyle(color: subTextColor, fontSize: 14),
+              ),
+            ],
+          ),
+          GestureDetector(
+            onTap: () => setState(() => _selectedIndex = 3),
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: cardColor,
+                shape: BoxShape.circle,
+                border: Border.all(color: borderColor),
+              ),
+              child: Icon(Icons.person_outline, color: textColor),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExplorePrompt(
+    bool isDarkMode,
+    Color textColor,
+    Color subTextColor,
+    Color cardColor,
+    Color borderColor,
+  ) {
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedIndex = 1;
-        });
-      },
+      onTap: () => setState(() => _selectedIndex = 1),
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: cardColor,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 15,
-              offset: const Offset(0, 5),
-            ),
-          ],
+          border: Border.all(color: borderColor),
         ),
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(18),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFEFF6FF),
-                borderRadius: BorderRadius.circular(18),
+                color: isDarkMode
+                    ? Colors.blue.withOpacity(0.1)
+                    : const Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: const Icon(
                 Icons.map_outlined,
@@ -113,8 +152,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 size: 28,
               ),
             ),
-            const SizedBox(width: 18),
-            const Expanded(
+            const SizedBox(width: 16),
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -123,124 +162,24 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
-                      color: Color(0xFF1E293B),
+                      color: textColor,
                     ),
                   ),
                   Text(
                     "Türkiye'nin tüm hazinelerini gör",
-                    style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                    style: TextStyle(fontSize: 13, color: subTextColor),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: Color(0xFF94A3B8)),
+            Icon(Icons.chevron_right, color: subTextColor),
           ],
         ),
       ),
     );
   }
 
-  // Merhaba kısmı
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Hoş Geldin 👋",
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1E293B),
-                ),
-              ),
-              Text(
-                "Maceraya hazır mısın?",
-                style: TextStyle(color: Color(0xFF64748B), fontSize: 14),
-              ),
-            ],
-          ),
-
-          GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedIndex = 3;
-              });
-            },
-
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: const Icon(Icons.person_outline, color: Color(0xFF1E293B)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBottomNav() {
-    return Container(
-      decoration: BoxDecoration(
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20),
-        ],
-      ),
-      child: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (index) => setState(() => _selectedIndex = index),
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.white,
-        selectedItemColor: const Color(0xFF2563EB),
-        unselectedItemColor: const Color(0xFF94A3B8),
-        selectedLabelStyle: const TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 12,
-        ),
-        unselectedLabelStyle: const TextStyle(fontSize: 12),
-        elevation: 0,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_filled),
-            activeIcon: Icon(Icons.home_filled),
-            label: "Ana Sayfa",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.explore_outlined),
-            activeIcon: Icon(Icons.explore),
-            label: "Keşfet",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.confirmation_num_outlined),
-            activeIcon: Icon(Icons.confirmation_num),
-            label: "Biletlerim",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            activeIcon: Icon(Icons.person),
-            label: "Profil",
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionTitle(String title) {
+  Widget _buildSectionTitle(String title, Color textColor) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
       child: Row(
@@ -248,18 +187,21 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF1E293B),
+              color: textColor,
             ),
           ),
-          const Text(
-            "Tümünü Gör",
-            style: TextStyle(
-              color: Color(0xFF2563EB),
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
+          GestureDetector(
+            onTap: () => setState(() => _selectedIndex = 2),
+            child: const Text(
+              "Tümünü Gör",
+              style: TextStyle(
+                color: Color(0xFF2563EB),
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
             ),
           ),
         ],
@@ -267,32 +209,116 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildVisitedPlacesList() {
-    return SizedBox(
-      height: 140,
-      child: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        children: [
-          _visitedPlaceCard("Kız Kulesi", "İstanbul", "🗼", "12 Ocak"),
-          const SizedBox(width: 16),
-          _visitedPlaceCard("Anıtkabir", "Ankara", "🏛️", "29 Ekim"),
-          const SizedBox(width: 16),
-          _visitedPlaceCard("Bodrum Kalesi", "Muğla", "🏰", "15 Ağustos"),
-        ],
-      ),
+  Widget _buildVisitedPlacesList(
+    Color cardColor,
+    Color textColor,
+    Color borderColor,
+  ) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return const SizedBox.shrink();
+
+    return StreamBuilder<QuerySnapshot>(
+      // KRİTİK DÜZELTME: Koleksiyon adı Firebase'de 'tickets' (küçük harf)
+      stream: FirebaseFirestore.instance
+          .collection('tickets')
+          .where('userId', isEqualTo: user.uid)
+          .where('status', isEqualTo: 'used')
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox(
+            height: 140,
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        final List<QueryDocumentSnapshot> docs = snapshot.data?.docs ?? [];
+
+        // Bellekte sıralama
+        docs.sort((a, b) {
+          final aData = a.data() as Map<String, dynamic>;
+          final bData = b.data() as Map<String, dynamic>;
+          final t1 = aData['createdAt'] as Timestamp?;
+          final t2 = bData['createdAt'] as Timestamp?;
+          if (t1 == null || t2 == null) return 0;
+          return t2.compareTo(t1);
+        });
+
+        final visitedDocs = docs.take(5).toList();
+
+        if (visitedDocs.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: cardColor.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: borderColor),
+              ),
+              child: Row(
+                children: [
+                  const Text("🏙️", style: TextStyle(fontSize: 24)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      "Henüz onaylanmış bir ziyaretin yok.",
+                      style: TextStyle(
+                        color: textColor.withOpacity(0.6),
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return SizedBox(
+          height: 140,
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            itemCount: visitedDocs.length,
+            itemBuilder: (context, index) {
+              final data = visitedDocs[index].data() as Map<String, dynamic>;
+              return Padding(
+                padding: const EdgeInsets.only(right: 16),
+                child: _visitedPlaceCard(
+                  data['museumName'] ?? "Müze",
+                  data['location'] ?? "Konum",
+                  data['icon'] ?? "🏛️",
+                  data['date'] ?? "---",
+                  cardColor,
+                  textColor,
+                  borderColor,
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 
-  Widget _visitedPlaceCard(String name, String city, String icon, String date) {
+  Widget _visitedPlaceCard(
+    String name,
+    String city,
+    String icon,
+    String date,
+    Color bg,
+    Color text,
+    Color border,
+  ) {
     return Container(
       width: 220,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: bg,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: border),
       ),
       child: Row(
         children: [
@@ -300,7 +326,7 @@ class _HomeScreenState extends State<HomeScreen> {
             width: 60,
             height: 60,
             decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
+              color: border.withOpacity(0.2),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Center(
@@ -315,9 +341,10 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Text(
                   name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
+                    color: text,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -328,31 +355,52 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: Color(0xFF64748B),
                     fontSize: 12,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.check_circle,
-                      color: Colors.green,
-                      size: 12,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      date,
-                      style: const TextStyle(
-                        color: Colors.green,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
+                Text(
+                  date,
+                  style: const TextStyle(
+                    color: Colors.green,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildBottomNav(bool isDarkMode) {
+    return BottomNavigationBar(
+      currentIndex: _selectedIndex,
+      onTap: (index) => setState(() => _selectedIndex = index),
+      type: BottomNavigationBarType.fixed,
+      backgroundColor: isDarkMode ? const Color(0xFF1E293B) : Colors.white,
+      selectedItemColor: const Color(0xFF2563EB),
+      unselectedItemColor: const Color(0xFF94A3B8),
+      items: const [
+        BottomNavigationBarItem(
+          icon: Icon(Icons.home_filled),
+          label: "Ana Sayfa",
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.explore_outlined),
+          label: "Keşfet",
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.confirmation_num_outlined),
+          label: "Biletlerim",
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.person_outline),
+          label: "Profil",
+        ),
+      ],
     );
   }
 }

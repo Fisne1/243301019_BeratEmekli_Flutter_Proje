@@ -10,14 +10,24 @@ class TicketsScreen extends StatefulWidget {
 }
 
 class _TicketsScreenState extends State<TicketsScreen> {
-  // Bilet onay
+  // Bileti onaylamak (kullanıldı olarak işaretlemek) için fonksiyon
   Future<void> _approveTicket(String ticketId) async {
-    // Onay penceresi göster
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
     bool? confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Bileti Onayla"),
-        content: const Text("Biletinizi Onaylamak İstiyor musunuz?"),
+        backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+        title: Text(
+          "Bileti Onayla",
+          style: TextStyle(
+            color: isDark ? Colors.white : const Color(0xFF1E293B),
+          ),
+        ),
+        content: Text(
+          "Biletinizi Onaylamak İstiyor musunuz?",
+          style: TextStyle(color: isDark ? Colors.white70 : Colors.black87),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -40,7 +50,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
         await FirebaseFirestore.instance
             .collection('tickets')
             .doc(ticketId)
-            .update({'status': 'used'}); // Durumu 'used' (kullanıldı) yapıyoruz
+            .update({'status': 'used'});
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -63,39 +73,67 @@ class _TicketsScreenState extends State<TicketsScreen> {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
+    final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    // Renk Değişkenleri
+    final Color textColor = isDarkMode ? Colors.white : const Color(0xFF1E293B);
+    final Color subTextColor = isDarkMode
+        ? Colors.white70
+        : const Color(0xFF64748B);
+    final Color cardColor = isDarkMode ? const Color(0xFF1E293B) : Colors.white;
+    final Color borderColor = isDarkMode
+        ? const Color(0xFF334155)
+        : const Color(0xFFE2E8F0);
+    final Color scaffoldBg = isDarkMode
+        ? const Color(0xFF0F172A)
+        : const Color(0xFFF8FAFC);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: scaffoldBg,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           "Biletlerim",
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF1E293B),
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, color: textColor),
         ),
         centerTitle: true,
-        backgroundColor: Colors.white,
+        backgroundColor: cardColor,
         elevation: 0,
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('tickets')
             .where('userId', isEqualTo: user?.uid)
-            .orderBy('createdAt', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
-          if (snapshot.hasError)
-            return Center(child: Text("Hata: ${snapshot.error}"));
+          if (snapshot.hasError) {
+            return Center(
+              child: Text(
+                "Sorgu Hatası: ${snapshot.error}",
+                style: TextStyle(color: textColor),
+              ),
+            );
+          }
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
               child: CircularProgressIndicator(color: Color(0xFF2563EB)),
             );
           }
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty)
-            return _buildEmptyState();
 
-          final tickets = snapshot.data!.docs;
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return _buildEmptyState(textColor, subTextColor);
+          }
+
+          final tickets = snapshot.data!.docs.toList();
+
+          // Manuel Sıralama
+          tickets.sort((a, b) {
+            var aData = a.data() as Map<String, dynamic>;
+            var bData = b.data() as Map<String, dynamic>;
+            Timestamp? aTime = aData['createdAt'] as Timestamp?;
+            Timestamp? bTime = bData['createdAt'] as Timestamp?;
+            if (aTime == null || bTime == null) return 0;
+            return bTime.compareTo(aTime);
+          });
 
           return ListView.builder(
             padding: const EdgeInsets.all(20),
@@ -103,9 +141,17 @@ class _TicketsScreenState extends State<TicketsScreen> {
             itemBuilder: (context, index) {
               var doc = tickets[index];
               var data = doc.data() as Map<String, dynamic>;
-              String docId = doc.id; // Belgenin ID'sini alıyoruz
+              String docId = doc.id;
 
-              return _buildPhysicalTicket(data, docId);
+              return _buildPhysicalTicket(
+                data,
+                docId,
+                cardColor,
+                textColor,
+                subTextColor,
+                borderColor,
+                scaffoldBg,
+              );
             },
           );
         },
@@ -113,23 +159,31 @@ class _TicketsScreenState extends State<TicketsScreen> {
     );
   }
 
-  Widget _buildPhysicalTicket(Map<String, dynamic> data, String docId) {
+  Widget _buildPhysicalTicket(
+    Map<String, dynamic> data,
+    String docId,
+    Color bg,
+    Color text,
+    Color subText,
+    Color border,
+    Color scaffoldBg,
+  ) {
     bool isUsed = data['status'] == 'used';
 
     return GestureDetector(
-      // Eğer bilet zaten kullanılmadıysa üzerine tıklandığında onaylama tetiklensin
       onTap: isUsed ? null : () => _approveTicket(docId),
       child: AnimatedOpacity(
         duration: const Duration(milliseconds: 300),
-        opacity: isUsed ? 0.6 : 1.0, // Kullanılmışsa biraz soluk görünsün
+        opacity: isUsed ? 0.6 : 1.0,
         child: Container(
           margin: const EdgeInsets.only(bottom: 24),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: bg,
             borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: border),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withOpacity(isUsed ? 0.02 : 0.1),
                 blurRadius: 15,
                 offset: const Offset(0, 5),
               ),
@@ -146,7 +200,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
                       width: 60,
                       height: 60,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F9),
+                        color: border.withOpacity(0.3),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Center(
@@ -163,36 +217,34 @@ class _TicketsScreenState extends State<TicketsScreen> {
                         children: [
                           Text(
                             data['museumName'] ?? "Müze",
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 18,
+                              color: text,
                             ),
                           ),
                           Text(
                             data['location'] ?? "Konum Bilgisi",
-                            style: const TextStyle(
-                              color: Colors.grey,
-                              fontSize: 13,
-                            ),
+                            style: TextStyle(color: subText, fontSize: 13),
                           ),
                         ],
                       ),
                     ),
-                    // Durum İkonu
                     Icon(
                       isUsed ? Icons.check_circle : Icons.qr_code_2,
                       size: 40,
-                      color: isUsed ? Colors.green : const Color(0xFF1E293B),
+                      color: isUsed ? Colors.green : text,
                     ),
                   ],
                 ),
               ),
 
+              // Kesik Çizgi ve Çentikler
               Row(
                 children: [
-                  _ticketNotch(isLeft: true),
-                  Expanded(child: _dashedLine()),
-                  _ticketNotch(isLeft: false),
+                  _ticketNotch(isLeft: true, color: scaffoldBg),
+                  Expanded(child: _dashedLine(border)),
+                  _ticketNotch(isLeft: false, color: scaffoldBg),
                 ],
               ),
 
@@ -204,23 +256,35 @@ class _TicketsScreenState extends State<TicketsScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _ticketDetail("TARİH", data['date'] ?? "---"),
-                        _ticketDetail("KİŞİ", data['visitorCount'] ?? "1 Kişi"),
+                        _ticketDetail(
+                          "TARİH",
+                          data['date'] ?? "---",
+                          subText,
+                          text,
+                        ),
+                        _ticketDetail(
+                          "KİŞİ",
+                          data['visitorCount'] ?? "1 Kişi",
+                          subText,
+                          text,
+                        ),
                         _ticketDetail(
                           "DURUM",
                           isUsed ? "KULLANILDI" : "AKTİF",
+                          subText,
+                          text,
                           isPrice: !isUsed,
                         ),
                       ],
                     ),
                     if (!isUsed)
-                      const Padding(
-                        padding: EdgeInsets.only(top: 12),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 12),
                         child: Text(
                           "Onaylamak için biletin üzerine tıkla",
                           style: TextStyle(
                             fontSize: 10,
-                            color: Colors.blue,
+                            color: Colors.blue.shade400,
                             fontStyle: FontStyle.italic,
                           ),
                         ),
@@ -235,14 +299,12 @@ class _TicketsScreenState extends State<TicketsScreen> {
     );
   }
 
-  // ... ( _ticketNotch, _dashedLine, _ticketDetail, _buildEmptyState aynı kalıyor )
-  // Not: _ticketDetail içindeki 'isPrice' parametresini rengi değiştirmek için kullanabiliriz.
-  Widget _ticketNotch({required bool isLeft}) {
+  Widget _ticketNotch({required bool isLeft, required Color color}) {
     return Container(
       height: 20,
       width: 10,
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: color,
         borderRadius: BorderRadius.only(
           topRight: isLeft ? const Radius.circular(10) : Radius.zero,
           bottomRight: isLeft ? const Radius.circular(10) : Radius.zero,
@@ -253,7 +315,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
     );
   }
 
-  Widget _dashedLine() {
+  Widget _dashedLine(Color color) {
     return LayoutBuilder(
       builder: (context, constraints) {
         return Flex(
@@ -261,12 +323,10 @@ class _TicketsScreenState extends State<TicketsScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: List.generate(
             (constraints.constrainWidth() / 10).floor(),
-            (index) => const SizedBox(
+            (index) => SizedBox(
               width: 5,
               height: 1,
-              child: DecoratedBox(
-                decoration: BoxDecoration(color: Color(0xFFE2E8F0)),
-              ),
+              child: DecoratedBox(decoration: BoxDecoration(color: color)),
             ),
           ),
         );
@@ -274,15 +334,21 @@ class _TicketsScreenState extends State<TicketsScreen> {
     );
   }
 
-  Widget _ticketDetail(String label, String value, {bool isPrice = false}) {
+  Widget _ticketDetail(
+    String label,
+    String value,
+    Color labelColor,
+    Color valueColor, {
+    bool isPrice = false,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 10,
-            color: Color(0xFF94A3B8),
+            color: labelColor,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -294,34 +360,32 @@ class _TicketsScreenState extends State<TicketsScreen> {
             fontSize: 14,
             color: isPrice
                 ? const Color(0xFF2563EB)
-                : (value == "KULLANILDI"
-                      ? Colors.green
-                      : const Color(0xFF1E293B)),
+                : (value == "KULLANILDI" ? Colors.green : valueColor),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(Color text, Color subText) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Text("🎫", style: TextStyle(fontSize: 80)),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             "Henüz biletin yok!",
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF1E293B),
+              color: text,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             "Hemen keşfetmeye başlayıp ilk biletini al.",
-            style: TextStyle(color: Color(0xFF64748B)),
+            style: TextStyle(color: subText),
           ),
         ],
       ),

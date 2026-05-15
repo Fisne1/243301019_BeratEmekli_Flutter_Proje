@@ -17,36 +17,30 @@ class _AuthScreenState extends State<AuthScreen> {
   bool isLoading = false;
   final _formKey = GlobalKey<FormState>();
 
-  // Input kontrolleri
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
 
-  // Giriş/Kayıt Fonksiyonu
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => isLoading = true);
     try {
       if (isLogin) {
-        // Giriş Yap
         await _auth.signInWithEmailAndPassword(
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
         );
       } else {
-        // Kayıt Ol
         UserCredential userCredential = await _auth
             .createUserWithEmailAndPassword(
               email: _emailController.text.trim(),
               password: _passwordController.text.trim(),
             );
 
-        // Firestore'a Kullanıcı Verisi Kaydet
-        // Not: Path kuralına dikkat: /artifacts/{appId}/users/{userId}/profile/info
         await _firestore
             .collection('artifacts')
-            .doc('muze-pass-app') // App ID buraya
+            .doc('muze-pass-app')
             .collection('users')
             .doc(userCredential.user!.uid)
             .collection('profile')
@@ -80,7 +74,6 @@ class _AuthScreenState extends State<AuthScreen> {
           padding: const EdgeInsets.all(24.0),
           child: Column(
             children: [
-              // Logo Alanı
               Container(
                 width: 80,
                 height: 80,
@@ -119,7 +112,6 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
               const SizedBox(height: 32),
 
-              // Form Alanı
               Form(
                 key: _formKey,
                 child: Column(
@@ -147,7 +139,6 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Buton
                     SizedBox(
                       width: double.infinity,
                       height: 56,
@@ -189,7 +180,6 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Switch Modu
               TextButton(
                 onPressed: () => setState(() => isLogin = !isLogin),
                 child: Text(

@@ -17,7 +17,6 @@ class _MuseumDetailScreenState extends State<MuseumDetailScreen> {
   Future<void> _handleBooking() async {
     final user = FirebaseAuth.instance.currentUser;
 
-    // Kullanıcı girişi kontrolü
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -28,7 +27,6 @@ class _MuseumDetailScreenState extends State<MuseumDetailScreen> {
       return;
     }
 
-    // Yükleniyor diyaloğunu aç
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -37,7 +35,6 @@ class _MuseumDetailScreenState extends State<MuseumDetailScreen> {
     );
 
     try {
-      // Timeout ekleyerek sonsuza kadar dönmesini engelliyoruz
       await FirebaseFirestore.instance
           .collection('tickets')
           .add({
@@ -54,13 +51,11 @@ class _MuseumDetailScreenState extends State<MuseumDetailScreen> {
             'status': 'active',
             'createdAt': FieldValue.serverTimestamp(),
           })
-          .timeout(const Duration(seconds: 10)); // 10 saniye sonra hata ver
+          .timeout(const Duration(seconds: 10));
 
-      // Başarılıysa yükleniyor diyaloğunu kapat
       if (mounted) Navigator.of(context, rootNavigator: true).pop();
       _showSuccessBottomSheet();
     } catch (e) {
-      // Hata durumunda yükleniyor diyaloğunu MUTLAKA kapat
       if (mounted) Navigator.of(context, rootNavigator: true).pop();
 
       String errorMsg =
@@ -96,8 +91,8 @@ class _MuseumDetailScreenState extends State<MuseumDetailScreen> {
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: () {
-                Navigator.pop(context); // Modal kapat
-                Navigator.pop(context); // Sayfadan çık
+                Navigator.pop(context);
+                Navigator.pop(context);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF2563EB),
