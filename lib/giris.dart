@@ -38,27 +38,33 @@ class _AuthScreenState extends State<AuthScreen> {
               password: _passwordController.text.trim(),
             );
 
-        await _firestore
-            .collection('artifacts')
-            .doc('muze-pass-app')
-            .collection('users')
-            .doc(userCredential.user!.uid)
-            .collection('profile')
-            .doc('info')
-            .set({
-              'fullName': _nameController.text.trim(),
-              'email': _emailController.text.trim(),
-              'createdAt': FieldValue.serverTimestamp(),
-              'balance': 0,
-              'role': 'user',
-            });
+        String fullName = _nameController.text.trim();
+        String role = 'user';
+
+        if (fullName.toUpperCase().startsWith("ADMIN")) {
+          role = 'admin';
+        }
+
+        await userCredential.user!.updateDisplayName(fullName);
+
+        await _firestore.collection('users').doc(userCredential.user!.uid).set({
+          'fullName': fullName,
+          'email': _emailController.text.trim(),
+          'createdAt': FieldValue.serverTimestamp(),
+          'role': role,
+        });
       }
     } on FirebaseAuthException catch (e) {
+      String errorMessage = "Bir hata oluştu";
+      if (e.code == 'user-not-found')
+        errorMessage = "Kullanıcı bulunamadı.";
+      else if (e.code == 'wrong-password')
+        errorMessage = "Hatalı şifre.";
+      else if (e.code == 'email-already-in-use')
+        errorMessage = "Bu e-posta zaten kullanımda.";
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.message ?? "Bir hata oluştu"),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
       );
     } finally {
       if (mounted) setState(() => isLoading = false);
@@ -67,8 +73,20 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final Color backgroundColor = isDarkMode
+        ? const Color(0xFF0F172A)
+        : const Color(0xFFF8FAFC);
+    final Color textColor = isDarkMode ? Colors.white : const Color(0xFF1E293B);
+    final Color subTextColor = isDarkMode
+        ? Colors.white70
+        : const Color(0xFF64748B);
+    final Color inputFillColor = isDarkMode
+        ? const Color(0xFF1E293B)
+        : Colors.white;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: backgroundColor,
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -79,16 +97,17 @@ class _AuthScreenState extends State<AuthScreen> {
                 height: 80,
                 decoration: BoxDecoration(
                   color: const Color(0xFF2563EB),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF2563EB).withOpacity(0.2),
+                      color: const Color(0xFF2563EB).withOpacity(0.3),
                       blurRadius: 20,
+                      offset: const Offset(0, 10),
                     ),
                   ],
                 ),
                 child: const Icon(
-                  Icons.confirmation_num,
+                  Icons.museum_outlined,
                   color: Colors.white,
                   size: 40,
                 ),
@@ -96,10 +115,10 @@ class _AuthScreenState extends State<AuthScreen> {
               const SizedBox(height: 24),
               Text(
                 isLogin ? "Tekrar Hoş Geldin" : "Hesap Oluştur",
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF1E293B),
+                  color: textColor,
                 ),
               ),
               const SizedBox(height: 8),
@@ -108,7 +127,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     ? "Müzelerin kapısını aralamaya devam et."
                     : "Tarihi keşfetmek için ilk adımını at.",
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Color(0xFF64748B)),
+                style: TextStyle(color: subTextColor),
               ),
               const SizedBox(height: 32),
 
@@ -119,8 +138,11 @@ class _AuthScreenState extends State<AuthScreen> {
                     if (!isLogin) ...[
                       _buildTextField(
                         _nameController,
-                        "Ad Soyad",
+                        "Ad Soyad (Admin için 'ADMIN ' yazın)",
                         Icons.person_outline,
+                        inputFillColor,
+                        textColor,
+                        subTextColor,
                       ),
                       const SizedBox(height: 16),
                     ],
@@ -128,6 +150,9 @@ class _AuthScreenState extends State<AuthScreen> {
                       _emailController,
                       "E-posta Adresi",
                       Icons.mail_outline,
+                      inputFillColor,
+                      textColor,
+                      subTextColor,
                       isEmail: true,
                     ),
                     const SizedBox(height: 16),
@@ -135,10 +160,12 @@ class _AuthScreenState extends State<AuthScreen> {
                       _passwordController,
                       "Şifre",
                       Icons.lock_outline,
+                      inputFillColor,
+                      textColor,
+                      subTextColor,
                       isPassword: true,
                     ),
                     const SizedBox(height: 24),
-
                     SizedBox(
                       width: double.infinity,
                       height: 56,
@@ -155,23 +182,13 @@ class _AuthScreenState extends State<AuthScreen> {
                             ? const CircularProgressIndicator(
                                 color: Colors.white,
                               )
-                            : Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    isLogin ? "Giriş Yap" : "Kayıt Ol",
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  const Icon(
-                                    Icons.arrow_forward,
-                                    color: Colors.white,
-                                  ),
-                                ],
+                            : Text(
+                                isLogin ? "Giriş Yap" : "Kayıt Ol",
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
                               ),
                       ),
                     ),
@@ -179,7 +196,6 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-
               TextButton(
                 onPressed: () => setState(() => isLogin = !isLogin),
                 child: Text(
@@ -202,31 +218,39 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget _buildTextField(
     TextEditingController controller,
     String hint,
-    IconData icon, {
+    IconData icon,
+    Color fillColor,
+    Color textColor,
+    Color subTextColor, {
     bool isPassword = false,
     bool isEmail = false,
   }) {
     return TextFormField(
       controller: controller,
       obscureText: isPassword,
+      style: TextStyle(color: textColor),
       keyboardType: isEmail ? TextInputType.emailAddress : TextInputType.text,
       decoration: InputDecoration(
         hintText: hint,
-        prefixIcon: Icon(icon, color: const Color(0xFF94A3B8)),
+        hintStyle: TextStyle(color: subTextColor, fontSize: 14),
+        prefixIcon: Icon(icon, color: subTextColor, size: 20),
         filled: true,
-        fillColor: Colors.white,
+        fillColor: fillColor,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFF2563EB), width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(vertical: 18),
       ),
       validator: (value) {
         if (value == null || value.isEmpty) return "Bu alan boş bırakılamaz";
         if (isEmail && !value.contains("@")) return "Geçerli bir e-posta girin";
-        if (isPassword && value.length < 6) {
+        if (isPassword && value.length < 6)
           return "Şifre en az 6 karakter olmalı";
-        }
         return null;
       },
     );

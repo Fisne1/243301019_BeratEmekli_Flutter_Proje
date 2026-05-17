@@ -10,7 +10,6 @@ class TicketsScreen extends StatefulWidget {
 }
 
 class _TicketsScreenState extends State<TicketsScreen> {
-  // Bileti onaylamak (kullanıldı olarak işaretlemek) için fonksiyon
   Future<void> _approveTicket(String ticketId) async {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -75,7 +74,6 @@ class _TicketsScreenState extends State<TicketsScreen> {
     final user = FirebaseAuth.instance.currentUser;
     final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    // Renk Değişkenleri
     final Color textColor = isDarkMode ? Colors.white : const Color(0xFF1E293B);
     final Color subTextColor = isDarkMode
         ? Colors.white70
@@ -125,7 +123,6 @@ class _TicketsScreenState extends State<TicketsScreen> {
 
           final tickets = snapshot.data!.docs.toList();
 
-          // Manuel Sıralama
           tickets.sort((a, b) {
             var aData = a.data() as Map<String, dynamic>;
             var bData = b.data() as Map<String, dynamic>;
@@ -191,7 +188,6 @@ class _TicketsScreenState extends State<TicketsScreen> {
           ),
           child: Column(
             children: [
-              // Üst Kısım
               Padding(
                 padding: const EdgeInsets.all(20),
                 child: Row(
@@ -239,7 +235,6 @@ class _TicketsScreenState extends State<TicketsScreen> {
                 ),
               ),
 
-              // Kesik Çizgi ve Çentikler
               Row(
                 children: [
                   _ticketNotch(isLeft: true, color: scaffoldBg),
@@ -248,7 +243,6 @@ class _TicketsScreenState extends State<TicketsScreen> {
                 ],
               ),
 
-              // Alt Kısım
               Padding(
                 padding: const EdgeInsets.all(20),
                 child: Column(

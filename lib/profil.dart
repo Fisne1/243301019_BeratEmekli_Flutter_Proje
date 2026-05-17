@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'main.dart'; // MuzeApp.of(context) kullanabilmek için main.dart'ı import et
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'main.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -9,34 +11,104 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  final List<String> _titles = [
+    "Mimar Selim",
+    "Sözün Bittiği Yer",
+    "Çankırılı",
+    "-1000 Aura",
+    "NPC",
+    "Yolcu",
+  ];
+
+  String _selectedTitle = "Kültür Kaşifi";
+
+  void _showTitlePicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? const Color(0xFF1E293B)
+          : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                "Bir Unvan Seç",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _titles.length,
+                  itemBuilder: (context, index) {
+                    return ListTile(
+                      title: Text(_titles[index], textAlign: TextAlign.center),
+                      onTap: () {
+                        setState(() => _selectedTitle = _titles[index]);
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Mevcut temanın karanlık olup olmadığını kontrol ediyoruz
+    final User? user = _auth.currentUser;
     final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    // Renkleri temaya göre dinamik seçiyoruz
     final Color textColor = isDarkMode ? Colors.white : const Color(0xFF1E293B);
-    final Color subTextColor = isDarkMode
-        ? Colors.white70
-        : const Color(0xFF64748B);
     final Color cardColor = isDarkMode ? const Color(0xFF1E293B) : Colors.white;
     final Color borderColor = isDarkMode
         ? const Color(0xFF334155)
         : const Color(0xFFF1F5F9);
 
+    String userName =
+        user?.displayName ?? (user?.email?.split('@')[0] ?? "Gezgin");
+
     return Scaffold(
-      // Arka plan rengi main.dart içindeki temadan otomatik gelir
+      backgroundColor: isDarkMode
+          ? const Color(0xFF0F172A)
+          : const Color(0xFFF8FAFC),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            children: [
-              // Üst Kısım: Profil Resmi ve İsim
-              Center(
-                child: Column(
-                  children: [
-                    Stack(
-                      alignment: Alignment.bottomRight,
+        child: StreamBuilder<QuerySnapshot>(
+          stream: _firestore
+              .collection('tickets')
+              .where('userId', isEqualTo: user?.uid)
+              .snapshots(),
+          builder: (context, snapshot) {
+            int visitedCount = 0;
+            int activeTickets = 0;
+            if (snapshot.hasData) {
+              for (var doc in snapshot.data!.docs) {
+                if ((doc.data() as Map)['status'] == "used")
+                  visitedCount++;
+                else
+                  activeTickets++;
+              }
+            }
+
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                children: [
+                  Center(
+                    child: Column(
                       children: [
                         Container(
                           width: 100,
@@ -45,121 +117,129 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             color: cardColor,
                             shape: BoxShape.circle,
                             border: Border.all(color: borderColor, width: 2),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 15,
-                                offset: const Offset(0, 5),
-                              ),
-                            ],
                           ),
                           child: const Center(
                             child: Text("👤", style: TextStyle(fontSize: 50)),
                           ),
                         ),
-                        Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF2563EB),
-                            shape: BoxShape.circle,
+                        const SizedBox(height: 16),
+                        Text(
+                          userName[0].toUpperCase() + userName.substring(1),
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: textColor,
                           ),
-                          child: const Icon(
-                            Icons.edit,
-                            color: Colors.white,
-                            size: 16,
+                        ),
+                        GestureDetector(
+                          onTap: _showTitlePicker,
+                          child: Container(
+                            margin: const EdgeInsets.only(top: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2563EB).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  _selectedTitle,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFF2563EB),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                const Icon(
+                                  Icons.edit,
+                                  size: 12,
+                                  color: Color(0xFF2563EB),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      "Berat Emekli",
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: textColor,
-                      ),
-                    ),
-                    Text(
-                      "Kültür Kaşifi",
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: subTextColor,
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 32),
+                  ),
+                  const SizedBox(height: 32),
 
-              // İstatistik Kartları
-              Row(
-                children: [
-                  _buildStatCard("Gezilen", "12", "🏛️", cardColor, textColor),
-                  const SizedBox(width: 16),
-                  _buildStatCard("Biletlerim", "3", "🎫", cardColor, textColor),
-                  const SizedBox(width: 16),
-                  _buildStatCard("Puan", "450", "⭐", cardColor, textColor),
+                  Row(
+                    children: [
+                      _buildStatCard(
+                        "Gezilen",
+                        "$visitedCount",
+                        "🏛️",
+                        cardColor,
+                        textColor,
+                      ),
+                      const SizedBox(width: 16),
+                      _buildStatCard(
+                        "Biletlerim",
+                        "$activeTickets",
+                        "🎫",
+                        cardColor,
+                        textColor,
+                      ),
+                      const SizedBox(width: 16),
+                      _buildStatCard(
+                        "Puan",
+                        "${visitedCount * 50}",
+                        "⭐",
+                        cardColor,
+                        textColor,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+
+                  _buildSectionTitle("Uygulama Ayarları"),
+                  const SizedBox(height: 12),
+
+                  _buildMenuItem(
+                    Icons.dark_mode_outlined,
+                    "Karanlık Mod",
+                    cardColor,
+                    textColor,
+                    isSwitch: true,
+                    switchValue: isDarkMode,
+                    onSwitchChanged: (value) => MuzeApp.of(
+                      context,
+                    )?.changeTheme(value ? ThemeMode.dark : ThemeMode.light),
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton(
+                      onPressed: () => _auth.signOut(),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: BorderSide(color: borderColor),
+                        ),
+                        backgroundColor: cardColor,
+                      ),
+                      child: const Text(
+                        "Çıkış Yap",
+                        style: TextStyle(
+                          color: Colors.redAccent,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
-              const SizedBox(height: 32),
-
-              _buildSectionTitle("Uygulama Ayarları"),
-              const SizedBox(height: 12),
-
-              // Dil Seçeneği
-              _buildMenuItem(
-                Icons.language_outlined,
-                "Dil Seçeneği",
-                cardColor,
-                textColor,
-                trailing: "Türkçe",
-              ),
-
-              // KARANLIK MOD SWITCH (Tıklanabilir Yer Burası)
-              _buildMenuItem(
-                Icons.dark_mode_outlined,
-                "Karanlık Mod",
-                cardColor,
-                textColor,
-                isSwitch: true,
-                switchValue: isDarkMode,
-                onSwitchChanged: (value) {
-                  // main.dart'taki changeTheme metodunu tetikler
-                  MuzeApp.of(
-                    context,
-                  )?.changeTheme(value ? ThemeMode.dark : ThemeMode.light);
-                },
-              ),
-
-              const SizedBox(height: 32),
-
-              // Çıkış Butonu
-              SizedBox(
-                width: double.infinity,
-                child: TextButton(
-                  onPressed: () {},
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      side: BorderSide(color: borderColor),
-                    ),
-                    backgroundColor: cardColor,
-                  ),
-                  child: const Text(
-                    "Çıkış Yap",
-                    style: TextStyle(
-                      color: Colors.redAccent,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
@@ -178,11 +258,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         decoration: BoxDecoration(
           color: bg,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: bg == Colors.white
-                ? const Color(0xFFE2E8F0)
-                : Colors.transparent,
-          ),
         ),
         child: Column(
           children: [
@@ -215,7 +290,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           fontSize: 14,
           fontWeight: FontWeight.bold,
           color: Color(0xFF94A3B8),
-          letterSpacing: 0.5,
         ),
       ),
     );
@@ -226,7 +300,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     String title,
     Color bg,
     Color text, {
-    String? trailing,
     bool isSwitch = false,
     bool switchValue = false,
     Function(bool)? onSwitchChanged,
@@ -237,24 +310,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: bg == Colors.white
-              ? const Color(0xFFF1F5F9)
-              : Colors.transparent,
-        ),
       ),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: bg == Colors.white
-                  ? const Color(0xFFF8FAFC)
-                  : Colors.black26,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, size: 20, color: const Color(0xFF64748B)),
-          ),
+          Icon(icon, size: 20, color: const Color(0xFF64748B)),
           const SizedBox(width: 16),
           Expanded(
             child: Text(
@@ -266,19 +325,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
           ),
-          if (isSwitch)
-            Switch(
-              value: switchValue,
-              onChanged: onSwitchChanged,
-              activeColor: const Color(0xFF2563EB),
-            )
-          else if (trailing != null)
-            Text(
-              trailing,
-              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
-            )
-          else
-            const Icon(Icons.chevron_right, size: 20, color: Color(0xFFCBD5E1)),
+          if (isSwitch) Switch(value: switchValue, onChanged: onSwitchChanged),
         ],
       ),
     );

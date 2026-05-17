@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
+
 import 'giris.dart';
 import 'anasayfa.dart';
+import 'adminanasayfa.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,13 +20,11 @@ class MuzeApp extends StatefulWidget {
   @override
   State<MuzeApp> createState() => _MuzeAppState();
 
-  // Tema değişikliğini diğer sayfalardan tetiklemek için statik metod
   static _MuzeAppState? of(BuildContext context) =>
       context.findAncestorStateOfType<_MuzeAppState>();
 }
 
 class _MuzeAppState extends State<MuzeApp> {
-  // Varsayılan tema modu
   ThemeMode _themeMode = ThemeMode.system;
 
   void changeTheme(ThemeMode themeMode) {
@@ -37,8 +38,6 @@ class _MuzeAppState extends State<MuzeApp> {
     return MaterialApp(
       title: 'Müze Pass Uygulaması',
       debugShowCheckedModeBanner: false,
-
-      // AYDINLIK TEMA
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.light,
@@ -46,8 +45,6 @@ class _MuzeAppState extends State<MuzeApp> {
         scaffoldBackgroundColor: const Color(0xFFF8FAFC),
         fontFamily: 'Inter',
       ),
-
-      // KARANLIK TEMA
       darkTheme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
@@ -55,27 +52,60 @@ class _MuzeAppState extends State<MuzeApp> {
         scaffoldBackgroundColor: const Color(0xFF0F172A),
         fontFamily: 'Inter',
       ),
-
       themeMode: _themeMode,
+      home: const AuthWrapper(),
+    );
+  }
+}
 
-      home: StreamBuilder<User?>(
-        stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Scaffold(
-              body: Center(
-                child: CircularProgressIndicator(color: Color(0xFF2563EB)),
-              ),
-            );
-          }
+class AuthWrapper extends StatelessWidget {
+  const AuthWrapper({super.key});
 
-          if (snapshot.hasData) {
-            return const HomeScreen(); // Kullanıcı giriş yapmışsa
-          }
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, authSnapshot) {
+        if (authSnapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
 
-          return const AuthScreen(); // Kullanıcı giriş yapmamışsa
-        },
-      ),
+        if (authSnapshot.hasData && authSnapshot.data != null) {
+          final String uid = authSnapshot.data!.uid;
+
+          return StreamBuilder<DocumentSnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('users')
+                .doc(uid)
+                .snapshots(),
+            builder: (context, roleSnapshot) {
+              if (roleSnapshot.connectionState == ConnectionState.waiting) {
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              }
+
+              if (!roleSnapshot.hasData || !roleSnapshot.data!.exists) {
+                return const HomeScreen();
+              }
+
+              final userData =
+                  roleSnapshot.data!.data() as Map<String, dynamic>;
+              final String role = userData['role'] ?? 'user';
+
+              if (role == 'admin') {
+                return const AdminAnaSayfa();
+              } else {
+                return const HomeScreen();
+              }
+            },
+          );
+        }
+
+        return const AuthScreen();
+      },
     );
   }
 }

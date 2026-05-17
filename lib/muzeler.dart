@@ -3,13 +3,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class Museum {
-  final int id;
+  final String id;
   final String name;
   final String location;
   final String price;
   final String category;
   final double rating;
   final String icon;
+  final bool isLocked;
 
   Museum({
     required this.id,
@@ -19,6 +20,7 @@ class Museum {
     required this.category,
     required this.rating,
     required this.icon,
+    required this.isLocked,
   });
 }
 
@@ -34,65 +36,46 @@ class _MuseumsScreenState extends State<MuseumsScreen> {
   String selectedCategory = "Hepsi";
   String searchTerm = "";
 
-  final List<Museum> museumsData = [
-    Museum(
-      id: 1,
-      name: "Ayasofya-i Kebir Cami-i",
-      location: "İstanbul, Fatih",
-      price: "Ücretsiz",
-      category: "Tarihi",
-      rating: 4.9,
-      icon: "🕌",
-    ),
-    Museum(
-      id: 2,
-      name: "Topkapı Sarayı Müzesi",
-      location: "İstanbul, Fatih",
-      price: "₺1500",
-      category: "Saray",
-      rating: 4.8,
-      icon: "🏰",
-    ),
-    Museum(
-      id: 3,
-      name: "Yerebatan Sarnıcı",
-      location: "İstanbul, Sultanahmet",
-      price: "₺600",
-      category: "Tarihi",
-      rating: 4.7,
-      icon: "💧",
-    ),
-    Museum(
-      id: 4,
-      name: "Amasya Kalesi",
-      location: "Amasya, Merkez",
-      price: "₺74",
-      category: "Kale",
-      rating: 4.5,
-      icon: "🛡️",
-    ),
-    Museum(
-      id: 5,
-      name: "Çankırı Kalesi",
-      location: "Çankırı, Merkez",
-      price: "Ücretsiz",
-      category: "Kale",
-      rating: 4.3,
-      icon: "⚔️",
-    ),
-    Museum(
-      id: 6,
-      name: "Mevlana Müzesi ve Camii",
-      location: "Konya, Karatay",
-      price: "Ücretsiz",
-      category: "Dini",
-      rating: 4.9,
-      icon: "🕌",
-    ),
-  ];
+  void _showLockedDialog(Museum museum) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+            SizedBox(width: 10),
+            Text(
+              "Müze Çok Yoğun",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: Text(
+          "${museum.name} şu anda aşırı ziyaretçi yoğunluğu nedeniyle bilet alımlarına geçici olarak kapatılmıştır. Lütfen daha sonra tekrar deneyiniz.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              "Tamam",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF2563EB),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-  // --- BILET ONALAMA MODALI ---
   void _showBookingDialog(Museum museum) {
+    if (museum.isLocked) {
+      _showLockedDialog(museum);
+      return;
+    }
+
     int count = 1;
     showDialog(
       context: context,
@@ -224,7 +207,6 @@ class _MuseumsScreenState extends State<MuseumsScreen> {
     );
   }
 
-  // --- FIREBASE KAYIT ISLEMI ---
   Future<void> _handleBooking(
     Museum museum,
     int count,
@@ -233,9 +215,8 @@ class _MuseumsScreenState extends State<MuseumsScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    Navigator.pop(context); // Dialogu kapat
+    Navigator.pop(context);
 
-    // Yükleme Göstergesi
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -258,7 +239,7 @@ class _MuseumsScreenState extends State<MuseumsScreen> {
       });
 
       if (mounted) {
-        Navigator.pop(context); // Yüklemeyi kapat
+        Navigator.pop(context);
         _showSuccessDialog();
       }
     } catch (e) {
@@ -316,15 +297,6 @@ class _MuseumsScreenState extends State<MuseumsScreen> {
     final Color borderColor = isDarkMode
         ? const Color(0xFF334155)
         : const Color(0xFFE2E8F0);
-
-    final filteredMuseums = museumsData.where((m) {
-      final matchesSearch =
-          m.name.toLowerCase().contains(searchTerm.toLowerCase()) ||
-          m.location.toLowerCase().contains(searchTerm.toLowerCase());
-      final matchesCategory =
-          selectedCategory == "Hepsi" || m.category == selectedCategory;
-      return matchesSearch && matchesCategory;
-    }).toList();
 
     return Scaffold(
       body: SafeArea(
@@ -413,128 +385,221 @@ class _MuseumsScreenState extends State<MuseumsScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              Text(
-                "SONUÇLAR (${filteredMuseums.length})",
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: subTextColor,
-                  letterSpacing: 1.2,
-                ),
-              ),
-              const SizedBox(height: 18),
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: filteredMuseums.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 16),
-                itemBuilder: (context, index) {
-                  final museum = filteredMuseums[index];
-                  return Material(
-                    color: Colors.transparent,
-                    child: Ink(
-                      decoration: BoxDecoration(
-                        color: cardColor,
-                        borderRadius: BorderRadius.circular(32),
-                        border: Border.all(color: borderColor),
+
+              StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('museums')
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(40.0),
+                        child: CircularProgressIndicator(),
                       ),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(32),
-                        onTap: () =>
-                            _showBookingDialog(museum), // Direkt modal açar
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 80,
-                                height: 80,
-                                decoration: BoxDecoration(
-                                  color: isDarkMode
-                                      ? Colors.black26
-                                      : const Color(0xFFF8FAFC),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    museum.icon,
-                                    style: const TextStyle(fontSize: 32),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      museum.category.toUpperCase(),
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                        color: _getCategoryColor(
-                                          museum.category,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      museum.name,
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 15,
-                                        color: textColor,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.location_on,
-                                          size: 12,
-                                          color: subTextColor,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          museum.location,
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            color: subTextColor,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    museum.price,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: museum.price == "Ücretsiz"
-                                          ? Colors.green
-                                          : textColor,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  const Icon(
-                                    Icons.add_circle,
-                                    color: Color(0xFF2563EB),
-                                    size: 24,
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
+                    );
+                  }
+
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Text(
+                        "Hata: ${snapshot.error}",
+                        style: TextStyle(color: textColor),
+                      ),
+                    );
+                  }
+
+                  final List<QueryDocumentSnapshot> docs =
+                      snapshot.data?.docs ?? [];
+
+                  final List<Museum> firebaseMuseums = docs.map((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    return Museum(
+                      id: doc.id,
+                      name: data['name'] ?? 'İsimsiz Müze',
+                      location: data['location'] ?? 'Konum Belirtilmedi',
+                      price: data['price'] ?? 'Ücretsiz',
+                      category: data['category'] ?? 'Tarihi',
+                      rating: (data['rating'] ?? 4.5).toDouble(),
+                      icon: data['icon'] ?? '🏛️',
+                      isLocked: data['isLocked'] ?? false,
+                    );
+                  }).toList();
+
+                  final filteredMuseums = firebaseMuseums.where((m) {
+                    final matchesSearch =
+                        m.name.toLowerCase().contains(
+                          searchTerm.toLowerCase(),
+                        ) ||
+                        m.location.toLowerCase().contains(
+                          searchTerm.toLowerCase(),
+                        );
+                    final matchesCategory =
+                        selectedCategory == "Hepsi" ||
+                        m.category == selectedCategory;
+                    return matchesSearch && matchesCategory;
+                  }).toList();
+
+                  if (filteredMuseums.isEmpty) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(40.0),
+                        child: Text("Sonuç bulunamadı."),
+                      ),
+                    );
+                  }
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "SONUÇLAR (${filteredMuseums.length})",
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: subTextColor,
+                          letterSpacing: 1.2,
                         ),
                       ),
-                    ),
+                      const SizedBox(height: 18),
+                      ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: filteredMuseums.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 16),
+                        itemBuilder: (context, index) {
+                          final museum = filteredMuseums[index];
+                          return Material(
+                            color: Colors.transparent,
+                            child: Ink(
+                              decoration: BoxDecoration(
+                                color: cardColor,
+                                borderRadius: BorderRadius.circular(32),
+                                border: Border.all(
+                                  color: museum.isLocked
+                                      ? Colors.orange.withOpacity(0.5)
+                                      : borderColor,
+                                  width: museum.isLocked ? 1.5 : 1,
+                                ),
+                              ),
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(32),
+                                onTap: museum.isLocked
+                                    ? () => _showLockedDialog(museum)
+                                    : () => _showBookingDialog(museum),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 80,
+                                        height: 80,
+                                        decoration: BoxDecoration(
+                                          color: isDarkMode
+                                              ? Colors.black26
+                                              : const Color(0xFFF8FAFC),
+                                          borderRadius: BorderRadius.circular(
+                                            16,
+                                          ),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            museum.icon,
+                                            style: const TextStyle(
+                                              fontSize: 32,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              museum.category.toUpperCase(),
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                                color: _getCategoryColor(
+                                                  museum.category,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              museum.name,
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 15,
+                                                color: museum.isLocked
+                                                    ? textColor.withOpacity(0.5)
+                                                    : textColor,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.location_on,
+                                                  size: 12,
+                                                  color: subTextColor,
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  museum.location,
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    color: subTextColor,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: [
+                                          Text(
+                                            museum.isLocked
+                                                ? "Yoğun"
+                                                : museum.price,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                              color: museum.isLocked
+                                                  ? Colors.orange
+                                                  : (museum.price == "Ücretsiz"
+                                                        ? Colors.green
+                                                        : textColor),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Icon(
+                                            museum.isLocked
+                                                ? Icons.lock_clock_outlined
+                                                : Icons.add_circle,
+                                            color: museum.isLocked
+                                                ? Colors.orange
+                                                : const Color(0xFF2563EB),
+                                            size: 24,
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
                   );
                 },
               ),

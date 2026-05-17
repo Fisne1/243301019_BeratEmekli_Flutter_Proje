@@ -97,7 +97,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               Text(
-                user?.phoneNumber?.split('@')[0] ?? "Gezgin",
+                user?.displayName?.split('@')[0] ?? "Gezgin",
                 style: TextStyle(color: subTextColor, fontSize: 14),
               ),
             ],
@@ -218,7 +218,6 @@ class _HomeScreenState extends State<HomeScreen> {
     if (user == null) return const SizedBox.shrink();
 
     return StreamBuilder<QuerySnapshot>(
-      // KRİTİK DÜZELTME: Koleksiyon adı Firebase'de 'tickets' (küçük harf)
       stream: FirebaseFirestore.instance
           .collection('tickets')
           .where('userId', isEqualTo: user.uid)
@@ -234,7 +233,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
         final List<QueryDocumentSnapshot> docs = snapshot.data?.docs ?? [];
 
-        // Bellekte sıralama
         docs.sort((a, b) {
           final aData = a.data() as Map<String, dynamic>;
           final bData = b.data() as Map<String, dynamic>;
