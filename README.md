@@ -1,17 +1,20 @@
-# muze_takip_uygulamasi
+# 243301019 Berat Emekli 
 
-A new Flutter project.
+# Uygulama ismi:Müze Bilet ve Geçiş Sistemi (muze_takip_uygulamasi)
 
-## Getting Started
+# Test Hesap Bilgileri:(Siz kendinizde oluşturabilirsiniz hocam)
 
-This project is a starting point for a Flutter application.
+user için: memnuniyetsiz@gmail.com   Şifre:Qaz1kc1a
 
-A few resources to get you started if this is your first Flutter project:
+admin için: admin@gmail.com   Şifre:Qaz1kc1a
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+# Kullanılan Paketler
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+firebase_core
+cloud_firestore
+firebase_auth
+cupertino_icons
+
+
+# Ekran Görüntüleri 
+
