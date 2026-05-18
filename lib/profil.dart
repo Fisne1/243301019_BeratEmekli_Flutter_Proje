@@ -23,7 +23,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     "Yolcu",
   ];
 
-  String _selectedTitle = "Kültür Kaşifi";
+  String _selectedTitle = "Yolcu";
 
   void _showTitlePicker() {
     showModalBottomSheet(
