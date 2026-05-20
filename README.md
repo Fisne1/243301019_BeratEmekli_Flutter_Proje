@@ -19,8 +19,8 @@ cupertino_icons
 # Ekran Görüntüleri 
 
 ![Giris Ekranı](giris.dart.png)
-![Musteri Ana Sayfa Ekranı](musterianasayfa.dart.png)
-![Admin Ana Sayfa Ekranı](adminanasayfa.dart.png)
+![Musteri Ana Sayfa Ekranı](anasayfa.dartt.png)
+![Admin Ana Sayfa Ekranı](adminanasayfa.dartt.png)
 ![Muzeler Ekranı](muzeler.dart.png)
 ![Biletler Ekranı](biletler.dart.png)
 ![Profil Ekranı](profil.dart.png)
