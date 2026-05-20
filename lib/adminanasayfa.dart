@@ -49,8 +49,8 @@ class _AdminAnaSayfaState extends State<AdminAnaSayfa> {
           'isLocked': false,
         },
         {
-          'name': "Amasya Kalesi",
-          'location': "Amasya, Merkez",
+          'name': "Amasra Kalesi",
+          'location': "Bartın, Merkez",
           'price': "₺74",
           'category': "Kale",
           'rating': 4.5,
